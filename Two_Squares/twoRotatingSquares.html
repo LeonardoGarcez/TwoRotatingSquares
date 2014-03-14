@@ -1,0 +1,174 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script type="text/javascript" 
+	    src="../glMatrix-0.9.5.min.js">
+    </script>
+    <script type="text/javascript" 
+	    src="../jquery-2.1.0.min.js">
+    </script>
+	<script type="text/javascript" 
+	    src="../InitiShaders.js">
+    </script>
+	<script type="text/javascript">
+	// Iniciar o ambiente quando a página for 
+      // carregada
+	var mMatrix1 = mat4.create();
+	var mMatrix2 = mat4.create();
+	var vMatrix = mat4.create();
+	var pMatrix = mat4.create();
+
+	var firstSquareVertexPositionBuffer;
+	var squareVertexPositionBuffer;
+	
+	var theta1 = 0.0;
+	var theta2 = 0.0;
+ 	//var theta = 0.0;
+	var thetaLoc;
+	  
+      $(function()
+      {
+	iniciaWebGL();
+      });
+	  
+	  function iniciaWebGL()
+    {
+      var canvas = $('#canvas-webgl')[0];
+      iniciarGL(canvas); // Definir como um canvas 3D
+      iniciarShaders();  // Obter e processar os Shaders
+      iniciarBuffers();  // Enviar o triângulo e quadrado na GPU
+      iniciarAmbiente(); // Definir background e cor do objeto
+      desenharCena();    // Usar os itens anteriores e desenhar
+	  
+	  window.setInterval(desenharCena, 20);
+    }
+	
+	 function iniciarGL(canvas)
+    {
+      try
+      {
+	gl = canvas.getContext("webgl") || 
+	     canvas.getContext("experimental-webgl");
+	gl.viewportWidth = canvas.width;
+	gl.viewportHeight = canvas.height;
+      }
+      catch(e)
+      {
+	if(!gl)
+	  alert("Não pode inicializar WebGL, desculpe");
+      }
+    }
+	
+	function iniciarBuffers()
+	{
+		firstSquareVertexPositionBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, firstSquareVertexPositionBuffer);
+		var vertices = [
+			1.0, 1.0, 0.0,
+			-1.0, 1.0, 0.0,
+			1.0,-1.0, 0.0,
+			-1.0,-1.0, 0.0
+		];
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+		firstSquareVertexPositionBuffer.itemSize = 3;
+		firstSquareVertexPositionBuffer.numItems = 4;
+  
+		squareVertexPositionBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+		vertices = [
+			1.0, 1.0, 0.0,
+			-1.0, 1.0, 0.0,
+			1.0,-1.0, 0.0,
+			-1.0,-1.0, 0.0
+		];
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+		squareVertexPositionBuffer.itemSize = 3;
+		squareVertexPositionBuffer.numItems = 4;
+	}
+	
+	function iniciarAmbiente()
+	{
+		gl.clearColor(1.0, 1.0, 1.0, 1.0);
+		gl.enable(gl.DEPTH_TEST);
+	}
+	
+	function desenharCena()
+	{
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+		mat4.identity(mMatrix1);
+		mat4.identity(mMatrix2);
+		mat4.identity(vMatrix);
+		
+		// Desenhando o primeiro Quadrado
+		theta1 += 0.1;
+		//Translate both movement matrices of the points
+		mat4.translate(mMatrix1, [-1.5, 0.0, -7.0]);
+		mat4.translate(mMatrix2, [-1.5, 0.0, -7.0]);
+		
+		mat4.rotate(mMatrix1, theta1, [0.0, 0.0, 1.0]);
+		gl.bindBuffer(gl.ARRAY_BUFFER, firstSquareVertexPositionBuffer);
+		gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, firstSquareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		setMatrixUniforms(1);
+		gl.drawArrays(gl.TRIANGLE_STRIP, 0, firstSquareVertexPositionBuffer.numItems);
+		
+		// Desenhando o segundo Quadrado
+		theta2 -= 0.1;
+		mat4.translate(mMatrix2, [3.0, 0.0, 0.0]);
+		mat4.rotate(mMatrix2, theta2, [0.0, 0.0, 1.0]);
+		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+		gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		setMatrixUniforms(2);
+		gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+		
+		//window.requestAnimFrame(desenharCena);
+		
+	}
+
+	function setMatrixUniforms(square)
+	{
+		gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, 
+			false, pMatrix);
+		gl.uniformMatrix4fv(shaderProgram.vMatrixUniform, 
+			false, vMatrix);
+		if(square == 1)
+			gl.uniformMatrix4fv(shaderProgram.mMatrixUniform, 
+				false, mMatrix1);
+		else
+			gl.uniformMatrix4fv(shaderProgram.mMatrixUniform, 
+				false, mMatrix2);
+	}
+	
+    </script>
+	<script id="shader-vs" type="x-shader/x-vertex">
+      attribute vec3 aVertexPosition;
+      
+      uniform mat4 uMMatrix;
+      uniform mat4 uVMatrix;
+      uniform mat4 uPMatrix;
+	
+	void main(void)
+    {
+		gl_Position = uPMatrix * uVMatrix * uMMatrix *
+		      vec4(aVertexPosition, 1.0);
+    }
+    </script>
+	
+	<script id="shader-fs" type="x-shader/x-fragment">
+		precision mediump float;
+      
+		void main(void)
+		{
+			gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+		}
+
+    </script>
+  </head>
+  <body>
+    <canvas id="canvas-webgl" 
+	    width="500px" 
+	    height="500px" 
+	    style="border:none">
+    </canvas>
+  </body>
+<html>
